@@ -305,6 +305,25 @@ function productCard(product, { ranked = false, rank = 0 } = {}) {
 }
 
 /* ---------------- Filtering / Sorting ---------------- */
+function initShopFilterFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const cat = params.get("cat");
+  if (cat && CATEGORIES.some((c) => c.name === cat)) {
+    shopFilter.category = cat;
+  }
+  const sort = params.get("sort");
+  if (sort) shopFilter.sort = sort;
+}
+
+function updateShopUrl() {
+  const url = new URL(location.href);
+  if (shopFilter.category === "all") url.searchParams.delete("cat");
+  else url.searchParams.set("cat", shopFilter.category);
+  if (shopFilter.sort === "default") url.searchParams.delete("sort");
+  else url.searchParams.set("sort", shopFilter.sort);
+  history.replaceState(null, "", url);
+}
+
 function getFilteredProducts() {
   let list = PRODUCTS.slice();
   if (shopFilter.category !== "all") {
@@ -369,7 +388,7 @@ function renderCategories() {
   grid.innerHTML = CATEGORIES.filter((c) => c.name !== "All")
     .map(
       (c) => `
-    <a class="cat-card reveal" href="index.html#shop">
+    <a class="cat-card reveal" href="shop.html?cat=${encodeURIComponent(c.name)}">
       <div class="cat-icon">${c.icon}</div>
       <h3>${c.name}</h3>
       <p>${c.desc}</p>
@@ -725,6 +744,7 @@ document.addEventListener("click", (e) => {
     shopFilter.category = chip.dataset.cat;
     renderFilterChips();
     renderProducts();
+    updateShopUrl();
     initReveal();
   }
 });
@@ -747,7 +767,38 @@ if (sortSelect) {
   sortSelect.addEventListener("change", () => {
     shopFilter.sort = sortSelect.value;
     renderProducts();
+    updateShopUrl();
     initReveal();
+  });
+}
+
+/* ---------------- Contact form -> WhatsApp ---------------- */
+const contactForm = $("#contactForm");
+if (contactForm) {
+  contactForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = $("#cfName").value.trim();
+    const phone = $("#cfPhone").value.trim();
+    const topic = $("#cfTopic").value.trim();
+    const message = $("#cfMsg").value.trim();
+    if (!name || !phone || !message) {
+      showToast("Please fill in your name, phone and message");
+      return;
+    }
+    const lines = [
+      "Hi ZARO, new message from the website:",
+      "",
+      `Name: ${name}`,
+      `Phone: ${phone}`,
+      `Topic: ${topic}`,
+      `Message: ${message}`
+    ];
+    window.open(
+      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`,
+      "_blank",
+      "noopener"
+    );
+    showToast("Opening WhatsApp to send your message");
   });
 }
 
@@ -767,6 +818,8 @@ if (payOptions) {
 window.addEventListener("scroll", onScroll, { passive: true });
 
 /* ---------------- Init ---------------- */
+initShopFilterFromUrl();
+if (sortSelect) sortSelect.value = shopFilter.sort;
 renderCategories();
 renderFilterChips();
 renderProducts();
